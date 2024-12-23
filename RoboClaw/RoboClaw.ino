@@ -3,13 +3,13 @@
 #include <Servo.h>
 
 // Wi-Fi credentials
-const char* ssid = "RoboticArm_AP";     // SSID for Wi-Fi Access Point
+const char* ssid = "RoboClaw_AP";     // SSID for Wi-Fi Access Point
 const char* password = "12345678";  // Password for Access Point
 
 ESP8266WebServer server(80); // Create a web server on port 80
 Servo myServo;               // Servo object
 
-int servoPin = D4; // GPIO2 (D4) for servo
+int servoPin = D1; // GPIO2 (D4) for servo
 int servoAngle = 90; // Initial servo angle
 
 void setup() {
