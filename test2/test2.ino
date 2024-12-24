@@ -27,7 +27,7 @@ int targetAngle = 0;   // Target angle from web interface
 // Servo movement parameters
 const int updateInterval = 10;    // Milliseconds between position updates
 const int smoothStep = 2;         // Degrees to move per step for smooth motion
-const int deadzone = 2;           // ±2 degrees deadzone to reduce noise
+const int deadzone = 0;           // ±2 degrees deadzone to reduce noise 
 unsigned long lastUpdate = 0;     // Timestamp of last position update
 
 // HTML for the web interface
@@ -53,12 +53,13 @@ const char webPage[] PROGMEM = R"=====(
             border: 1px solid black;
         }
         #indicator {
-            width: 10px;
-            height: 20px;
+            width: 7px;
+            height: 30px;
             background: black;
-            position: absolute;
+            position:   absolute;
             top: 0;
-            transform: translateX(-50%);
+            transform: translateX(0%);
+            transform: translateY(-16.6%);
         }
     </style>
 </head>
