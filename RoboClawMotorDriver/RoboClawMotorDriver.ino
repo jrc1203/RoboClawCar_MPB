@@ -39,7 +39,7 @@ const char MAIN_page[] PROGMEM = R"=====(
   <button onclick="sendCommand('RIGHT')">Right</button><br>
   <button onclick="sendCommand('STOP')">Stop</button><br>
   <label for="speed">Speed:</label>
-  <input type="range" id="speed" min="0" max="1023" oninput="updateSpeed(this.value)"><br>
+  <input type="range" id="speed" min="0" max="200" oninput="updateSpeed(this.value)"><br>
   <script>
     function sendCommand(command) {
       fetch(`/${command}`).then(response => console.log(response.status));
@@ -82,7 +82,11 @@ void handleBackward() {
 }
 
 void handleLeft() {
-  setMotorDirection(LOW, HIGH);
+ // setMotorDirection(LOW, HIGH);
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
   server.send(200, "text/plain", "Turning Left");
   lcd.clear();
   lcd.setCursor(1,0);
@@ -90,7 +94,11 @@ void handleLeft() {
 }
 
 void handleRight() {
-  setMotorDirection(HIGH, LOW);
+ // setMotorDirection(HIGH, LOW);
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
   server.send(200, "text/plain", "Turning Right");
   lcd.clear();
   lcd.setCursor(1,0);
