@@ -2,153 +2,80 @@
 #include <ESP8266WebServer.h>
 #include <Servo.h>
 
-// Network credentials - Replace with your desired values
-const char* ssid = "RoboClaw_AP";
-const char* password = "12345678";
+// Wi-Fi credentials
+const char* ssid = "RoboClaw_AP";     // SSID for Wi-Fi Access Point
+const char* password = "12345678";  // Password for Access Point
 
-// Pin definitions
-const int servoPin = D1;  // GPIO5
+ESP8266WebServer server(80); // Create a web server on port 80
+Servo myServo;               // Servo object
 
-// IMPORTANT: Voltage considerations
-// Currently configured for 3.3V testing from NodeMCU
-// TODO: When switching to 5V external power:
-// 1. Connect external 5V to servo power
-// 2. Connect grounds together
-// 3. Keep signal wire connected to NodeMCU D1
-
-// Server instance
-ESP8266WebServer server(80);
-
-// Servo configuration
-Servo clawServo;
-int currentAngle = 0;  // Tracks current servo position
-int targetAngle = 0;   // Target angle from web interface
-
-// Servo movement parameters
-const int updateInterval = 15;    // Milliseconds between position updates
-const int smoothStep = 2;         // Degrees to move per step for smooth motion
-unsigned long lastUpdate = 0;     // Timestamp of last position update
-
-// HTML for the web interface
-const char webPage[] PROGMEM = R"=====(
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Robot Arm Control</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body { font-family: Arial; text-align: center; margin: 0px auto; padding: 20px; }
-        .slider-container { margin: 20px; }
-        .slider { width: 80%; max-width: 400px; }
-        #angleDisplay { font-size: 24px; margin: 20px; }
-    </style>
-</head>
-<body>
-    <h1>Robot Arm Control</h1>
-    <div class="slider-container">
-        <input type="range" min="0" max="180" value="0" class="slider" id="servoSlider">
-    </div>
-    <div id="angleDisplay">0°</div>
-    <script>
-        var slider = document.getElementById("servoSlider");
-        var display = document.getElementById("angleDisplay");
-        slider.oninput = function() {
-            display.innerHTML = this.value + "°";
-            fetch('/setAngle?value=' + this.value);
-        }
-        // Update current position every second
-        setInterval(function() {
-            fetch('/getCurrentAngle')
-                .then(response => response.text())
-                .then(angle => {
-                    display.innerHTML = angle + "°";
-                    slider.value = angle;
-                });
-        }, 1000);
-    </script>
-</body>
-</html>
-)=====";
+int servoPin = D1; // GPIO2 (D4) for servo
+int servoAngle = 90; // Initial servo angle
 
 void setup() {
-    Serial.begin(115200);
-    
-    // Initialize servo
-    clawServo.attach(servoPin);
-    
-    // Set servo to initial position
-    clawServo.write(currentAngle);
-    
-    // Configure Access Point
-    WiFi.softAP(ssid, password);
-    Serial.println("Access Point Started");
-    Serial.print("IP Address: ");
-    Serial.println(WiFi.softAPIP());
-    
-    // Set up web server routes
-    server.on("/", handleRoot);
-    server.on("/setAngle", handleSetAngle);
-    server.on("/getCurrentAngle", handleGetAngle);
-    
-    // Start server
-    server.begin();
-    Serial.println("HTTP server started");
+  // Initialize serial communication
+  Serial.begin(115200);
+  Serial.println("Setting up Access Point...");
+
+  // Start Wi-Fi Access Point
+  WiFi.softAP(ssid, password);
+  IPAddress IP = WiFi.softAPIP();
+  Serial.print("AP IP Address: ");
+  Serial.println(IP);
+
+  // Attach the servo to the specified pin
+  myServo.attach(servoPin);
+  myServo.write(servoAngle); // Move servo to initial angle (90 degrees)
+
+  // Define server routes
+  server.on("/", handleRoot);                 // Main page
+  server.on("/update", handleUpdateServo);    // Update servo position
+  server.begin();                             // Start the server
+  Serial.println("HTTP server started");
 }
 
 void loop() {
-    server.handleClient();
-    updateServoPosition();
+  server.handleClient(); // Handle incoming client requests
 }
 
-// Serve the web interface
+// Handle the root page (web interface)
 void handleRoot() {
-    server.send(200, "text/html", webPage);
-}
-
-// Handle angle updates from the slider
-void handleSetAngle() {
-    if (server.hasArg("value")) {
-        targetAngle = server.arg("value").toInt();
-        targetAngle = constrain(targetAngle, 0, 180);
-        server.send(200, "text/plain", "OK");
-    }
-}
-
-// Return current servo angle
-void handleGetAngle() {
-    server.send(200, "text/plain", String(currentAngle));
-}
-
-// Smooth servo movement implementation
-void updateServoPosition() {
-    if (millis() - lastUpdate >= updateInterval) {
-        if (currentAngle != targetAngle) {
-            // Move towards target angle smoothly
-            if (currentAngle < targetAngle) {
-                currentAngle += min(smoothStep, targetAngle - currentAngle);
-            } else {
-                currentAngle -= min(smoothStep, currentAngle - targetAngle);
-            }
-            clawServo.write(currentAngle);
+  String html = R"rawliteral(
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Robotic Arm Control</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: Arial; text-align: center; padding: 20px;">
+      <h2>3D Printed Robotic Arm Controller</h2>
+      <p>Servo Angle: <span id="servoAngle">90</span>°</p>
+      <input type="range" min="0" max="180" value="90" id="slider" oninput="updateServo(this.value)">
+      <br><br>
+      <script>
+        function updateServo(angle) {
+          document.getElementById('servoAngle').innerText = angle;
+          fetch('/update?angle=' + angle); // Send angle to server
         }
-        lastUpdate = millis();
-    }
+      </script>
+    </body>
+    </html>
+  )rawliteral";
+  server.send(200, "text/html", html); // Send HTML content
 }
 
-/* Future Enhancements:
- * 1. Position Memory
- * To maintain servo position after reboot:
- * - Add EEPROM.h at the top
- * - In setup(), add: currentAngle = EEPROM.read(0);
- * - In handleSetAngle(), add: EEPROM.write(0, targetAngle);
- * 
- * 2. Motor Driver Integration
- * - Define L298N pins at the top
- * - Create motor control functions
- * - Add motor control endpoints to the web server
- * 
- * 3. Linear Actuator
- * - Define additional servo pin
- * - Create another Servo instance
- * - Extend web interface with additional slider
- */
+// Handle servo angle updates
+void handleUpdateServo() {
+  if (server.hasArg("angle")) {
+    servoAngle = server.arg("angle").toInt();
+    if (servoAngle >= 0 && servoAngle <= 180) {
+      myServo.write(servoAngle); // Move servo to the requested angle
+      Serial.println("Servo Angle: " + String(servoAngle) + "°");
+      server.send(200, "text/plain", "OK"); // Respond with "OK"
+    } else {
+      server.send(400, "text/plain", "Invalid angle"); // Respond with error
+    }
+  } else {
+    server.send(400, "text/plain", "No angle provided"); // Respond with error
+  }
+}
