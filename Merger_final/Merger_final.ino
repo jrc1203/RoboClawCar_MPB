@@ -7,8 +7,7 @@
 #include <ESPAsyncTCP.h>
 #endif
 #include <ESPAsyncWebServer.h>
-#include <Wire.h>
-#include <Adafruit_PWMServoDriver.h>
+#include <ESP32Servo.h>
 #include <iostream>
 #include <sstream>
 #include <vector>
@@ -45,23 +44,19 @@ const int PWMFreq = 1000; /* 1 KHz */
 const int PWMResolution = 8;
 const int PWMSpeedChannel = 4;
 
-// PCA9685 Configuration
-Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40); // Default I2C address
-const int SERVO_MIN_PULSE = 150; // Minimum pulse length for servos
-const int SERVO_MAX_PULSE = 600; // Maximum pulse length for servos
-
 // Claw Configuration
 struct ServoPins {
-  int servoChannel; // PCA9685 channel (0–15)
+  Servo servo;
+  int servoPin;
   String servoName;
-  int initialPosition;  
+  int initialPosition;
 };
 
 std::vector<ServoPins> servoPins = {
-  { 0, "Base", 90},      // PCA9685 channel 0
-  { 1, "Shoulder", 90},  // PCA9685 channel 1
-  { 2, "Elbow", 90},     // PCA9685 channel 2
-  { 3, "Gripper", 90},   // PCA9685 channel 3
+  { Servo(), 27 , "Base", 90},
+  { Servo(), 26 , "Shoulder", 90},
+  { Servo(), 25 , "Elbow", 90},
+  { Servo(), 33 , "Gripper", 90},
 };
 
 struct RecordedStep {
@@ -80,7 +75,7 @@ AsyncWebServer server(80);
 AsyncWebSocket wsCarInput("/CarInput");
 AsyncWebSocket wsRobotArmInput("/RobotArmInput");
 
-// HTML Interface (same as before)
+// HTML Interface
 const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
 <!DOCTYPE html>
 <html>
@@ -373,20 +368,19 @@ void writeServoValues(int servoIndex, int value) {
     if (recordedSteps.size() == 0) {
       for (int i = 0; i < servoPins.size(); i++) {
         recordedStep.servoIndex = i; 
-        recordedStep.value = map(servoPins[i].initialPosition, 0, 180, SERVO_MIN_PULSE, SERVO_MAX_PULSE); // Map to PWM pulse
+        recordedStep.value = servoPins[i].servo.read(); 
         recordedStep.delayInStep = 0;
         recordedSteps.push_back(recordedStep);         
       }      
     }
     unsigned long currentTime = millis();
     recordedStep.servoIndex = servoIndex; 
-    recordedStep.value = map(value, 0, 180, SERVO_MIN_PULSE, SERVO_MAX_PULSE); // Map to PWM pulse
+    recordedStep.value = value; 
     recordedStep.delayInStep = currentTime - previousTimeInMilli;
     recordedSteps.push_back(recordedStep);  
     previousTimeInMilli = currentTime;         
   }
-  int pulse = map(value, 0, 180, SERVO_MIN_PULSE, SERVO_MAX_PULSE); // Map angle to PWM pulse
-  pwm.setPWM(servoPins[servoIndex].servoChannel, 0, pulse); // Set PWM for the servo
+  servoPins[servoIndex].servo.write(value);   
 }
 
 void playRecordedRobotArmSteps() {
@@ -395,11 +389,11 @@ void playRecordedRobotArmSteps() {
   }
   for (int i = 0; i < 4 && playRecordedSteps; i++) {
     RecordedStep &recordedStep = recordedSteps[i];
-    int currentPulse = pwm.getPWM(servoPins[recordedStep.servoIndex].servoChannel);
-    while (currentPulse != recordedStep.value && playRecordedSteps) {
-      currentPulse = (currentPulse > recordedStep.value ? currentPulse - 1 : currentPulse + 1); 
-      pwm.setPWM(servoPins[recordedStep.servoIndex].servoChannel, 0, currentPulse);
-      wsRobotArmInput.textAll(servoPins[recordedStep.servoIndex].servoName + "," + map(currentPulse, SERVO_MIN_PULSE, SERVO_MAX_PULSE, 0, 180));
+    int currentServoPosition = servoPins[recordedStep.servoIndex].servo.read();
+    while (currentServoPosition != recordedStep.value && playRecordedSteps) {
+      currentServoPosition = (currentServoPosition > recordedStep.value ? currentServoPosition - 1 : currentServoPosition + 1); 
+      servoPins[recordedStep.servoIndex].servo.write(currentServoPosition);
+      wsRobotArmInput.textAll(servoPins[recordedStep.servoIndex].servoName + "," + currentServoPosition);
       delay(50);
     }
   }
@@ -407,9 +401,18 @@ void playRecordedRobotArmSteps() {
   for (int i = 4; i < recordedSteps.size() && playRecordedSteps ; i++) {
     RecordedStep &recordedStep = recordedSteps[i];
     delay(recordedStep.delayInStep);
-    pwm.setPWM(servoPins[recordedStep.servoIndex].servoChannel, 0, recordedStep.value);
-    wsRobotArmInput.textAll(servoPins[recordedStep.servoIndex].servoName + "," + map(recordedStep.value, SERVO_MIN_PULSE, SERVO_MAX_PULSE, 0, 180));
+    servoPins[recordedStep.servoIndex].servo.write(recordedStep.value);
+    wsRobotArmInput.textAll(servoPins[recordedStep.servoIndex].servoName + "," + recordedStep.value);
   }
+}
+void handleRoot(AsyncWebServerRequest *request) 
+{
+  request->send_P(200, "text/html", htmlHomePage);
+}
+
+void handleNotFound(AsyncWebServerRequest *request) 
+{
+    request->send(404, "text/plain", "File Not Found");
 }
 
 // WebSocket Event Handlers
@@ -499,21 +502,10 @@ void onRobotArmInputWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient 
 
 void sendCurrentRobotArmState() {
   for (int i = 0; i < servoPins.size(); i++) {
-    int pulse = pwm.getPWM(servoPins[i].servoChannel);
-    int angle = map(pulse, SERVO_MIN_PULSE, SERVO_MAX_PULSE, 0, 180);
-    wsRobotArmInput.textAll(servoPins[i].servoName + "," + angle);
+    wsRobotArmInput.textAll(servoPins[i].servoName + "," + servoPins[i].servo.read());
   }
   wsRobotArmInput.textAll(String("Record,") + (recordSteps ? "ON" : "OFF"));
   wsRobotArmInput.textAll(String("Play,") + (playRecordedSteps ? "ON" : "OFF"));  
-}
-
-// HTTP Request Handlers
-void handleRoot(AsyncWebServerRequest *request) {
-  request->send_P(200, "text/html", htmlHomePage);
-}
-
-void handleNotFound(AsyncWebServerRequest *request) {
-  request->send(404, "text/plain", "File Not Found");
 }
 
 // Setup and Loop
@@ -528,14 +520,10 @@ void setUpPinModes() {
   }
   moveCar(STOP);
 
-  // Initialize PCA9685
-  pwm.begin();
-  pwm.setPWMFreq(50); // Set PWM frequency to 50Hz (standard for servos)
-
-  // Initialize Servos to Initial Positions
+  // Set up Servo Pins
   for (int i = 0; i < servoPins.size(); i++) {
-    int pulse = map(servoPins[i].initialPosition, 0, 180, SERVO_MIN_PULSE, SERVO_MAX_PULSE);
-    pwm.setPWM(servoPins[i].servoChannel, 0, pulse);
+    servoPins[i].servo.attach(servoPins[i].servoPin);
+    servoPins[i].servo.write(servoPins[i].initialPosition);    
   }
 }
 
