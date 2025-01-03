@@ -24,7 +24,7 @@ struct MOTOR_PINS {
 };
 
 std::vector<MOTOR_PINS> motorPins = {
-  {22, 16, 17},  // RIGHT_MOTOR Pins (EnA, IN1, IN2)
+  {32, 16, 17},  // RIGHT_MOTOR Pins (EnA, IN1, IN2)
   {23, 18, 19},  // LEFT_MOTOR  Pins (EnB, IN3, IN4)
 };
 
@@ -146,8 +146,8 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
     </style>
   </head>
   <body class="noselect" align="center" style="background-color:white">
-    <h1 style="color: teal;text-align:center;"> MPBirla RoboClaw </h1>
-    <h2 style="color: teal;text-align:center;">Control😇</h2>
+    <h1 style="color: teal;text-align:center;"> MPB _RoboClawCAR_ </h1>
+    <h2 style="color: teal;text-align:center;">ClaW ConTroL</h2>
 
     <!-- Claw Controls -->
     <table id="clawTable" style="width:400px;margin:auto;table-layout:fixed" CELLSPACING=10>
@@ -202,8 +202,7 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
     </table>
 
     <!-- Car Controls -->
-    <h1 style="color: teal;text-align:center;">SUPOTRONIX INDIA</h1>
-    <h2 style="color: teal;text-align:center;">WiFi Robot Control</h2>
+    <h2 style="color: teal;text-align:center;">Car ControL</h2>
     <table id="carTable" style="width:400px;margin:auto;table-layout:fixed" CELLSPACING=10>
       <tr>
         <td></td>
@@ -343,12 +342,12 @@ void moveCar(int inputValue) {
       rotateMotor(LEFT_MOTOR, BACKWARD);  
       break;
     case LEFT:
-      rotateMotor(RIGHT_MOTOR, FORWARD);
-      rotateMotor(LEFT_MOTOR, BACKWARD);  
+      rotateMotor(RIGHT_MOTOR, BACKWARD);
+      rotateMotor(LEFT_MOTOR, FORWARD);  
       break;
     case RIGHT:
-      rotateMotor(RIGHT_MOTOR, BACKWARD);
-      rotateMotor(LEFT_MOTOR, FORWARD); 
+      rotateMotor(RIGHT_MOTOR, FORWARD);
+      rotateMotor(LEFT_MOTOR, BACKWARD); 
       break;
     case STOP:
       rotateMotor(RIGHT_MOTOR, STOP);

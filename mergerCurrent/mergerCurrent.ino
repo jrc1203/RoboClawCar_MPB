@@ -7,10 +7,14 @@
 #include <ESPAsyncTCP.h>
 #endif
 #include <ESPAsyncWebServer.h>
-#include <ESP32Servo.h>
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
 #include <iostream>
 #include <sstream>
 #include <vector>
+
+// PCA9685 Configuration
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40); // Default I2C address
 
 // WiFi Configuration
 const char* ssid = "RoboClawz_APZ";
@@ -46,17 +50,16 @@ const int PWMSpeedChannel = 4;
 
 // Claw Configuration
 struct ServoPins {
-  Servo servo;
   int servoPin;
   String servoName;
   int initialPosition;
 };
 
 std::vector<ServoPins> servoPins = {
-  { Servo(), 27 , "Base", 90},
-  { Servo(), 26 , "Shoulder", 90},
-  { Servo(), 25 , "Elbow", 90},
-  { Servo(), 33 , "Gripper", 90},
+  { 0, "Base", 90 },      // Channel 0
+  { 1, "Shoulder", 90 },  // Channel 1
+  { 2, "Elbow", 90 },     // Channel 2
+  { 3, "Gripper", 90 },   // Channel 3
 };
 
 struct RecordedStep {
@@ -75,7 +78,7 @@ AsyncWebServer server(80);
 AsyncWebSocket wsCarInput("/CarInput");
 AsyncWebSocket wsRobotArmInput("/RobotArmInput");
 
-// HTML Interface
+// HTML Interface (unchanged)
 const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
 <!DOCTYPE html>
 <html>
@@ -156,7 +159,7 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
         <td style="text-align:left;font-size:25px"><b>Gripper:</b></td>
         <td colspan=2>
          <div class="slidecontainer">
-            <input type="range" min="0" max="180" value="90" class="slider" id="Gripper" oninput='sendButtonInput("Gripper",value)'>
+            <input type="range" min="0" max="90" value="10" class="slider" id="Gripper" oninput='sendButtonInput("Gripper",value)'>
           </div>
         </td>
       </tr> 
@@ -165,7 +168,7 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
         <td style="text-align:left;font-size:25px"><b>Elbow:</b></td>
         <td colspan=2>
          <div class="slidecontainer">
-            <input type="range" min="0" max="180" value="90" class="slider" id="Elbow" oninput='sendButtonInput("Elbow",value)'>
+            <input type="range" min="0" max="90" value="10" class="slider" id="Elbow" oninput='sendButtonInput("Elbow",value)'>
           </div>
         </td>
       </tr> 
@@ -174,7 +177,7 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
         <td style="text-align:left;font-size:25px"><b>Shoulder:</b></td>
         <td colspan=2>
          <div class="slidecontainer">
-            <input type="range" min="0" max="180" value="90" class="slider" id="Shoulder" oninput='sendButtonInput("Shoulder",value)'>
+            <input type="range" min="0" max="90" value="10" class="slider" id="Shoulder" oninput='sendButtonInput("Shoulder",value)'>
           </div>
         </td>
       </tr>  
@@ -183,7 +186,7 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
         <td style="text-align:left;font-size:25px"><b>Base:</b></td>
         <td colspan=2>
          <div class="slidecontainer">
-            <input type="range" min="0" max="180" value="90" class="slider" id="Base" oninput='sendButtonInput("Base",value)'>
+            <input type="range" min="0" max="90" value="10" class="slider" id="Base" oninput='sendButtonInput("Base",value)'>
           </div>
         </td>
       </tr> 
@@ -316,7 +319,7 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
 </html>
 )HTMLHOMEPAGE";
 
-// Motor Driver Functions
+// Motor Driver Functions (unchanged)
 void rotateMotor(int motorNumber, int motorDirection) {
   if (motorDirection == FORWARD) {
     digitalWrite(motorPins[motorNumber].pinIN1, HIGH);
@@ -360,26 +363,32 @@ void moveCar(int inputValue) {
   }
 }
 
-// Claw Functions
+// Claw Functions (updated for PCA9685)
 void writeServoValues(int servoIndex, int value) {
+  // Map the angle (0°–90°) to the PWM range (150–375)
+  int pwmValue = map(value, 0, 90, 150, 375);
+
+  // Set the PWM value for the corresponding channel
+  pwm.setPWM(servoPins[servoIndex].servoPin, 0, pwmValue);
+
+  // Recording functionality (unchanged)
   if (recordSteps) {
     RecordedStep recordedStep;       
     if (recordedSteps.size() == 0) {
       for (int i = 0; i < servoPins.size(); i++) {
         recordedStep.servoIndex = i; 
-        recordedStep.value = servoPins[i].servo.read(); 
+        recordedStep.value = value; // Use the angle value, not PWM
         recordedStep.delayInStep = 0;
         recordedSteps.push_back(recordedStep);         
       }      
     }
     unsigned long currentTime = millis();
     recordedStep.servoIndex = servoIndex; 
-    recordedStep.value = value; 
+    recordedStep.value = value; // Use the angle value, not PWM
     recordedStep.delayInStep = currentTime - previousTimeInMilli;
     recordedSteps.push_back(recordedStep);  
     previousTimeInMilli = currentTime;         
   }
-  servoPins[servoIndex].servo.write(value);   
 }
 
 void playRecordedRobotArmSteps() {
@@ -388,10 +397,10 @@ void playRecordedRobotArmSteps() {
   }
   for (int i = 0; i < 4 && playRecordedSteps; i++) {
     RecordedStep &recordedStep = recordedSteps[i];
-    int currentServoPosition = servoPins[recordedStep.servoIndex].servo.read();
+    int currentServoPosition = map(pwm.getPWM(servoPins[recordedStep.servoIndex].servoPin), 150, 375, 0, 90);
     while (currentServoPosition != recordedStep.value && playRecordedSteps) {
       currentServoPosition = (currentServoPosition > recordedStep.value ? currentServoPosition - 1 : currentServoPosition + 1); 
-      servoPins[recordedStep.servoIndex].servo.write(currentServoPosition);
+      writeServoValues(recordedStep.servoIndex, currentServoPosition);
       wsRobotArmInput.textAll(servoPins[recordedStep.servoIndex].servoName + "," + currentServoPosition);
       delay(50);
     }
@@ -400,21 +409,20 @@ void playRecordedRobotArmSteps() {
   for (int i = 4; i < recordedSteps.size() && playRecordedSteps ; i++) {
     RecordedStep &recordedStep = recordedSteps[i];
     delay(recordedStep.delayInStep);
-    servoPins[recordedStep.servoIndex].servo.write(recordedStep.value);
+    writeServoValues(recordedStep.servoIndex, recordedStep.value);
     wsRobotArmInput.textAll(servoPins[recordedStep.servoIndex].servoName + "," + recordedStep.value);
   }
 }
-void handleRoot(AsyncWebServerRequest *request) 
-{
+
+// Web Server and WebSocket Handlers (unchanged)
+void handleRoot(AsyncWebServerRequest *request) {
   request->send_P(200, "text/html", htmlHomePage);
 }
 
-void handleNotFound(AsyncWebServerRequest *request) 
-{
-    request->send(404, "text/plain", "File Not Found");
+void handleNotFound(AsyncWebServerRequest *request) {
+  request->send(404, "text/plain", "File Not Found");
 }
 
-// WebSocket Event Handlers
 void onCarInputWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
   switch (type) {
     case WS_EVT_CONNECT:
@@ -501,7 +509,8 @@ void onRobotArmInputWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient 
 
 void sendCurrentRobotArmState() {
   for (int i = 0; i < servoPins.size(); i++) {
-    wsRobotArmInput.textAll(servoPins[i].servoName + "," + servoPins[i].servo.read());
+    int currentAngle = map(pwm.getPWM(servoPins[i].servoPin), 150, 375, 0, 90);
+    wsRobotArmInput.textAll(servoPins[i].servoName + "," + currentAngle);
   }
   wsRobotArmInput.textAll(String("Record,") + (recordSteps ? "ON" : "OFF"));
   wsRobotArmInput.textAll(String("Play,") + (playRecordedSteps ? "ON" : "OFF"));  
@@ -509,7 +518,11 @@ void sendCurrentRobotArmState() {
 
 // Setup and Loop
 void setUpPinModes() {
-  // Set up Motor Pins
+  // Initialize PCA9685
+  pwm.begin();
+  pwm.setPWMFreq(50); // Set PWM frequency to 50Hz (standard for servos)
+
+  // Set up Motor Pins (unchanged)
   ledcSetup(PWMSpeedChannel, PWMFreq, PWMResolution);
   for (int i = 0; i < motorPins.size(); i++) {
     pinMode(motorPins[i].pinEn, OUTPUT);    
@@ -519,10 +532,9 @@ void setUpPinModes() {
   }
   moveCar(STOP);
 
-  // Set up Servo Pins
+  // Set initial servo positions (unchanged, but now using PCA9685)
   for (int i = 0; i < servoPins.size(); i++) {
-    servoPins[i].servo.attach(servoPins[i].servoPin);
-    servoPins[i].servo.write(servoPins[i].initialPosition);    
+    writeServoValues(i, servoPins[i].initialPosition);
   }
 }
 
