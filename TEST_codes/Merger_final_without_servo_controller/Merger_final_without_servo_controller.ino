@@ -1,3 +1,6 @@
+//change the gripper initial angle in the slider from 0 to 45 degree
+//change all servo values in the slider from 10 to 170 dergree
+//led and buzzer add
 #include <Arduino.h>
 #ifdef ESP32
 #include <WiFi.h>

@@ -31,7 +31,7 @@ struct RecordedStep
 std::vector<RecordedStep> recordedSteps;
 
 bool recordSteps = false;
-bool playRecordedSteps = false;
+bool playRecordedSteps = fa lse;
 
 unsigned long previousTimeInMilli = millis();
 
