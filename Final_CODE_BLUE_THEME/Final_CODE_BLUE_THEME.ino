@@ -78,77 +78,124 @@ AsyncWebSocket wsRobotArmInput("/RobotArmInput");
 // HTML Interface
 const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
 <!DOCTYPE html>
+<!DOCTYPE html>
 <html>
   <head>
-  <meta charset="UTF-8"> <!-- Ensure UTF-8 encoding -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2, user-scalable=yes">
     <style>
-    /* Claw Controls */
-    input[type=button] {
-      background-color:red;color:white;border-radius:30px;width:100%;height:40px;font-size:20px;text-align:center;
-    }
-    .slidecontainer {
-      width: 100%;
-    }
-    .slider {
-      -webkit-appearance: none;
-      width: 100%;
-      height: 20px;
-      border-radius: 5px;
-      background: #d3d3d3;
-      outline: none;
-      opacity: 0.7;
-      -webkit-transition: .2s;
-      transition: opacity .2s;
-    }
-    .slider:hover {
-      opacity: 1;
-    }
-    .slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: red;
-      cursor: pointer;
-    }
-    .slider::-moz-range-thumb {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: red;
-      cursor: pointer;
-    }
+      /* General Styles */
+      body {
+        background-color: #f5f5f5; /* Soft light gray background */
+        color: #000; /* Black text for readability */
+        font-family: Arial, sans-serif;
+      }
 
-    /* Car Controls */
-    .arrows {
-      font-size:40px;
-      color:red;
-    }
-    td.button {
-      background-color:black;
-      border-radius:25%;
-      box-shadow: 5px 5px #888888;
-    }
-    td.button:active {
-      transform: translate(5px,5px);
-      box-shadow: none; 
-    }
-    .noselect {
-      -webkit-touch-callout: none; /* iOS Safari */
-        -webkit-user-select: none; /* Safari */
-         -khtml-user-select: none; /* Konqueror HTML */
-           -moz-user-select: none; /* Firefox */
-            -ms-user-select: none; /* Internet Explorer/Edge */
-                user-select: none; /* Non-prefixed version, currently
-                                      supported by Chrome and Opera */
-    }
+      h1, h2 {
+        color: #007BFF; /* Bright blue for headings */
+      }
+
+      /* Claw Controls */
+      input[type=button] {
+        background-color: #007BFF; /* Bright blue buttons */
+        color: white;
+        border-radius: 30px;
+        width: 100%;
+        height: 40px;
+        font-size: 20px;
+        text-align: center;
+        border: none;
+        cursor: pointer;
+      }
+
+      .slidecontainer {
+        width: 100%;
+      }
+
+      .slider {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 20px;
+        border-radius: 5px;
+        background: #d3d3d3;
+        outline: none;
+        opacity: 0.7;
+        -webkit-transition: .2s;
+        transition: opacity .2s;
+      }
+
+      .slider:hover {
+        opacity: 1;
+      }
+
+      .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #007BFF; /* Bright blue slider thumb */
+        cursor: pointer;
+      }
+
+      .slider::-moz-range-thumb {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #007BFF; /* Bright blue slider thumb */
+        cursor: pointer;
+      }
+
+      /* Car Controls */
+      .arrows {
+        font-size: 40px;
+        color: #007BFF; /* Bright blue arrows */
+      }
+
+      td.button {
+        background-color: #fff; /* White background for buttons */
+        border-radius: 25%;
+        box-shadow: 5px 5px #888888;
+        cursor: pointer;
+      }
+
+      td.button:active {
+        transform: translate(5px, 5px);
+        box-shadow: none;
+      }
+
+      .noselect {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+
+      /* Dark Mode Toggle */
+      .dark-mode-toggle {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background-color: #007BFF;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
     </style>
   </head>
-  <body class="noselect" align="center" style="background-color:white">
-    <h1 style="color: teal;text-align:center;"> MPB_RoboClawCAR </h1>
-    <h2 style="color: teal;text-align:center;">ClaW ConTroL</h2>
+  <body class="noselect" align="center">
+    <button class="dark-mode-toggle" onclick="toggleDarkMode()">🌙</button>
+    <h1>MPB_RoboClawCAR</h1>
+    <h2>Claw Control</h2>
 
     <!-- Claw Controls -->
     <table id="clawTable" style="width:400px;margin:auto;table-layout:fixed" CELLSPACING=10>
@@ -156,68 +203,68 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
       <tr>
         <td style="text-align:left;font-size:25px"><b>Gripper:</b></td>
         <td colspan=2>
-         <div class="slidecontainer">
+          <div class="slidecontainer">
             <input type="range" min="15" max="170" value="90" class="slider" id="Gripper" oninput='sendButtonInput("Gripper",value)'>
           </div>
         </td>
-      </tr> 
+      </tr>
       <tr/><tr/>
       <tr>
         <td style="text-align:left;font-size:25px"><b>Elbow:</b></td>
         <td colspan=2>
-         <div class="slidecontainer">
+          <div class="slidecontainer">
             <input type="range" min="50" max="180" value="90" class="slider" id="Elbow" oninput='sendButtonInput("Elbow",value)'>
           </div>
         </td>
-      </tr> 
-      <tr/><tr/>      
+      </tr>
+      <tr/><tr/>
       <tr>
         <td style="text-align:left;font-size:25px"><b>Shoulder:</b></td>
         <td colspan=2>
-         <div class="slidecontainer">
+          <div class="slidecontainer">
             <input type="range" min="0" max="180" value="90" class="slider" id="Shoulder" oninput='sendButtonInput("Shoulder",value)'>
           </div>
         </td>
-      </tr>  
-      <tr/><tr/>      
+      </tr>
+      <tr/><tr/>
       <tr>
         <td style="text-align:left;font-size:25px"><b>Base:</b></td>
         <td colspan=2>
-         <div class="slidecontainer">
+          <div class="slidecontainer">
             <input type="range" min="0" max="180" value="90" class="slider" style="transform: scaleX(-1);" id="Base" oninput='sendButtonInput("Base",value)'>
           </div>
         </td>
-      </tr> 
-      <tr/><tr/> 
+      </tr>
+      <tr/><tr/>
       <tr>
         <td style="text-align:left;font-size:25px"><b>Record:</b></td>
         <td><input type="button" id="Record" value="OFF" ontouchend='onclickButton(this)'></td>
         <td></td>
       </tr>
-      <tr/><tr/> 
+      <tr/><tr/>
       <tr>
         <td style="text-align:left;font-size:25px"><b>Play:</b></td>
         <td><input type="button" id="Play" value="OFF" ontouchend='onclickButton(this)'></td>
         <td></td>
-      </tr>      
+      </tr>
     </table>
 
     <!-- Car Controls -->
-    <h2 style="color: teal;text-align:center;">Car ControL</h2>
+    <h2>Car Control</h2>
     <table id="carTable" style="width:400px;margin:auto;table-layout:fixed" CELLSPACING=10>
       <tr>
         <td></td>
-        <td class="button" ontouchstart='sendButtonInput("MoveCar","1")' ontouchend='sendButtonInput("MoveCar","0")'><span class="arrows" >⇧</span></td>
+        <td class="button" ontouchstart='sendButtonInput("MoveCar","1")' ontouchend='sendButtonInput("MoveCar","0")'><span class="arrows">⇧</span></td>
         <td></td>
       </tr>
       <tr>
-        <td class="button" ontouchstart='sendButtonInput("MoveCar","3")' ontouchend='sendButtonInput("MoveCar","0")'><span class="arrows" >⇦</span></td>
-        <td class="button"></td>    
-        <td class="button" ontouchstart='sendButtonInput("MoveCar","4")' ontouchend='sendButtonInput("MoveCar","0")'><span class="arrows" >⇨</span></td>
+        <td class="button" ontouchstart='sendButtonInput("MoveCar","3")' ontouchend='sendButtonInput("MoveCar","0")'><span class="arrows">⇦</span></td>
+        <td class="button"></td>
+        <td class="button" ontouchstart='sendButtonInput("MoveCar","4")' ontouchend='sendButtonInput("MoveCar","0")'><span class="arrows">⇨</span></td>
       </tr>
       <tr>
         <td></td>
-        <td class="button" ontouchstart='sendButtonInput("MoveCar","2")' ontouchend='sendButtonInput("MoveCar","0")'><span class="arrows" >⇩</span></td>
+        <td class="button" ontouchstart='sendButtonInput("MoveCar","2")' ontouchend='sendButtonInput("MoveCar","0")'><span class="arrows">⇩</span></td>
         <td></td>
       </tr>
       <tr/><tr/>
@@ -226,33 +273,35 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
       <tr>
         <td style="text-align:left;font-size:25px"><b>Speed:</b></td>
         <td colspan=2>
-         <div class="slidecontainer">
+          <div class="slidecontainer">
             <input type="range" min="0" max="255" value="150" class="slider" id="Speed" oninput='sendButtonInput("Speed",value)'>
           </div>
         </td>
-      </tr>       
+      </tr>
     </table>
 
     <script>
       // WebSocket for Claw Controls
-      var webSocketRobotArmInputUrl = "ws:\/\/" + window.location.hostname + "/RobotArmInput";      
+      var webSocketRobotArmInputUrl = "ws:\/\/" + window.location.hostname + "/RobotArmInput";
       var websocketRobotArmInput;
-      
+
       function initRobotArmInputWebSocket() {
         websocketRobotArmInput = new WebSocket(webSocketRobotArmInputUrl);
-        websocketRobotArmInput.onopen = function(event){};
-        websocketRobotArmInput.onclose = function(event){setTimeout(initRobotArmInputWebSocket, 2000);};
-        websocketRobotArmInput.onmessage = function(event){
+        websocketRobotArmInput.onopen = function(event) {};
+        websocketRobotArmInput.onclose = function(event) {
+          setTimeout(initRobotArmInputWebSocket, 2000);
+        };
+        websocketRobotArmInput.onmessage = function(event) {
           var keyValue = event.data.split(",");
           var button = document.getElementById(keyValue[0]);
           button.value = keyValue[1];
           if (button.id == "Record" || button.id == "Play") {
-            button.style.backgroundColor = (button.value == "ON" ? "green" : "red");  
+            button.style.backgroundColor = (button.value == "ON" ? "#007BFF" : "#007BFF"); /* Bright blue for ON/OFF */
             enableDisableButtonsSliders(button);
           }
         };
       }
-      
+
       function sendButtonInput(key, value) {
         var data = key + "," + value;
         if (key == "Gripper" || key == "Elbow" || key == "Shoulder" || key == "Base" || key == "Record" || key == "Play") {
@@ -261,59 +310,78 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
           websocketCarInput.send(data);
         }
       }
-      
+
       function onclickButton(button) {
-        button.value = (button.value == "ON") ? "OFF" : "ON" ;        
-        button.style.backgroundColor = (button.value == "ON" ? "green" : "red");          
-        var value = (button.value == "ON") ? 1 : 0 ;
+        button.value = (button.value == "ON") ? "OFF" : "ON";
+        button.style.backgroundColor = (button.value == "ON" ? "green" : "#007BFF"); /* Bright blue for ON/OFF */
+        var value = (button.value == "ON") ? 1 : 0;
         sendButtonInput(button.id, value);
         enableDisableButtonsSliders(button);
       }
-      
+
       function enableDisableButtonsSliders(button) {
-        if(button.id == "Play") {
+        if (button.id == "Play") {
           var disabled = "auto";
           if (button.value == "ON") {
-            disabled = "none";            
+            disabled = "none";
           }
           document.getElementById("Gripper").style.pointerEvents = disabled;
-          document.getElementById("Elbow").style.pointerEvents = disabled;          
-          document.getElementById("Shoulder").style.pointerEvents = disabled;          
-          document.getElementById("Base").style.pointerEvents = disabled; 
+          document.getElementById("Elbow").style.pointerEvents = disabled;
+          document.getElementById("Shoulder").style.pointerEvents = disabled;
+          document.getElementById("Base").style.pointerEvents = disabled;
           document.getElementById("Record").style.pointerEvents = disabled;
         }
-        if(button.id == "Record") {
+        if (button.id == "Record") {
           var disabled = "auto";
           if (button.value == "ON") {
-            disabled = "none";            
+            disabled = "none";
           }
           document.getElementById("Play").style.pointerEvents = disabled;
-        }        
+        }
       }
 
       // WebSocket for Car Controls
-      var webSocketCarInputUrl = "ws:\/\/" + window.location.hostname + "/CarInput";      
+      var webSocketCarInputUrl = "ws:\/\/" + window.location.hostname + "/CarInput";
       var websocketCarInput;
-      
+
       function initCarInputWebSocket() {
         websocketCarInput = new WebSocket(webSocketCarInputUrl);
         websocketCarInput.onopen = function(event) {
           var speedButton = document.getElementById("Speed");
           sendButtonInput("Speed", speedButton.value);
         };
-        websocketCarInput.onclose = function(event){setTimeout(initCarInputWebSocket, 2000);};
-        websocketCarInput.onmessage = function(event){};        
+        websocketCarInput.onclose = function(event) {
+          setTimeout(initCarInputWebSocket, 2000);
+        };
+        websocketCarInput.onmessage = function(event) {};
       }
-      
+
+      // Dark Mode Toggle
+      function toggleDarkMode() {
+        const body = document.body;
+        body.classList.toggle("dark-mode");
+        const isDarkMode = body.classList.contains("dark-mode");
+        body.style.backgroundColor = isDarkMode ? "#333" : "#f5f5f5";
+        body.style.color = isDarkMode ? "#fff" : "#000";
+        const buttons = document.querySelectorAll("input[type=button]");
+        buttons.forEach(button => {
+          button.style.backgroundColor = isDarkMode ? "#555" : "#007BFF";
+        });
+        const sliders = document.querySelectorAll(".slider");
+        sliders.forEach(slider => {
+          slider.style.backgroundColor = isDarkMode ? "#555" : "#d3d3d3";
+        });
+      }
+
       window.onload = function() {
         initRobotArmInputWebSocket();
         initCarInputWebSocket();
       };
-      document.getElementById("mainTable").addEventListener("touchend", function(event){
-        event.preventDefault()
-      });      
+      document.getElementById("mainTable").addEventListener("touchend", function(event) {
+        event.preventDefault();
+      });
     </script>
-  </body>    
+  </body>
 </html>
 )HTMLHOMEPAGE";
 
