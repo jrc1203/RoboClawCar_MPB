@@ -1,3 +1,4 @@
+//Esp32 or nodemcu with 3 DOF claw hand 
 #include <Arduino.h>
 #ifdef ESP32
 #include <WiFi.h>

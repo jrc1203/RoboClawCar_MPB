@@ -1,3 +1,5 @@
+//This code is working but needs optimisation
+//I recommend to first optimise the code then use it...I donot have time for this! ;)
 #include <Arduino.h>
 #ifdef ESP32
 #include <WiFi.h>
